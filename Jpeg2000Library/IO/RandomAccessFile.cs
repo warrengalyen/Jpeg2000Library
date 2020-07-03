@@ -46,7 +46,7 @@ namespace Jpeg2000Library.IO
             {
                 if (_isEOFInBuffer && offset > _offset + _maxBytes)
                 {
-                    throw new EndOfFileExpception();
+                    throw new EndOfFileException();
                 }
                 _pos = offset - _offset;
             }
@@ -82,7 +82,7 @@ namespace Jpeg2000Library.IO
             else if (_isEOFInBuffer)
             {
                 _pos = _maxBytes + 1;
-                throw new EndOfFileExpception();
+                throw new EndOfFileException();
             }
             else
             {
