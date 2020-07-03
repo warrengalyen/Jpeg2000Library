@@ -12,5 +12,6 @@ namespace Jpeg2000Library.IO
         uint ReadInt();
         ushort ReadShort();
         ulong ReadLong();
+        void ReadFully(byte[] buffer, long offset, long length);
     }
 }

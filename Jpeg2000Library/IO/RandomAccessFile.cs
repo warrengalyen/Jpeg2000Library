@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using Jpeg2000Library.Exceptions;
 
 namespace Jpeg2000Library.IO
@@ -101,6 +102,35 @@ namespace Jpeg2000Library.IO
             _isEOFInBuffer = _maxBytes < _buffer.Length;
             if (_maxBytes == -1)
                 _maxBytes = 0;
+        }
+
+        public void ReadFully(byte[] buffer, long offset, long length)
+        {
+            long currLen;  // current length to read
+            while (length > 0)
+            {
+                // There is still some data to read
+                if (_pos < _maxBytes)
+                {
+                    // We can read some data from the buffer
+                    currLen = _maxBytes - Position;
+                    if (currLen > length) currLen = length;
+                    Array.Copy(_buffer, _pos, buffer, offset, currLen);
+                    _pos += currLen;
+                    offset += currLen;
+                    length -= currLen;
+                }
+                else if (_isEOFInBuffer)
+                {
+                    _pos = _maxBytes + 1;  // Set position to EOF
+                    throw new EndOfFileException();
+                }
+                else
+                {
+                    // Buffer empty => get more data
+                    ReadNewBuffer(_offset + _pos);
+                }
+            }
         }
     }
 }
