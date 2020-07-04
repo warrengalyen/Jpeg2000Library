@@ -2,9 +2,9 @@
 
 namespace Jpeg2000Library.Exceptions
 {
-    public class EndOfFileExpception : Exception
+    public class EndOfFileException : Exception
     {
-        public EndOfFileExpception() : base("End of file reached!")
+        public EndOfFileException() : base("End of file reached!")
         {
 
         }
