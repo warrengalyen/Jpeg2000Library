@@ -73,6 +73,10 @@ namespace Jpeg2000Library.IO
             return (ushort)(Read() << 8 | Read());
         }
 
+        public ushort ReadUnsignedShort()
+        {
+            return ReadShort();
+        }
 
         public int Read()
         {
@@ -113,7 +117,7 @@ namespace Jpeg2000Library.IO
                 if (_pos < _maxBytes)
                 {
                     // We can read some data from the buffer
-                    currLen = _maxBytes - Position;
+                    currLen = _maxBytes - _pos;
                     if (currLen > length) currLen = length;
                     Array.Copy(_buffer, _pos, buffer, offset, currLen);
                     _pos += currLen;

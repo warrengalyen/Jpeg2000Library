@@ -9,7 +9,7 @@ namespace Jpeg2000Library.FileFormat.Reader
     {
         private class CodeStreamBox
         {
-            public CodeStreamBox(long length, long position)
+            public CodeStreamBox(long position, long length)
             {
                 Length = length;
                 Position = position;
