@@ -4,6 +4,7 @@ using System.IO;
 using Jpeg2000Library.Entropy;
 using Jpeg2000Library.Exceptions;
 using Jpeg2000Library.IO;
+using Jpeg2000Library.Util;
 using Jpeg2000Library.Wavelet;
 using Jpeg2000Library.Wavelet.Synthesis;
 

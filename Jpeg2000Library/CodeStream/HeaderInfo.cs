@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Jpeg2000Library.Wavelet;
 
 namespace Jpeg2000Library.CodeStream
 {
@@ -53,17 +54,17 @@ namespace Jpeg2000Library.CodeStream
                     (1 << (spcoc_ch + 2)) + "\n";
                 switch (spcoc_t[0])
                 {
-                    case W9X7:
+                    case FilterTypes.W9X7:
                         str += " Filter         : 9-7 irreversible\n";
                         break;
-                    case W5X3:
+                    case FilterTypes.W5X3:
                         str += " Filter         : 5-3 reversible\n";
                         break;
                 }
                 if (spcoc_ps != null)
                 {
                     str += " Precincts      : ";
-                    for (int i = 0; i < spcoc_ps.length; i++)
+                    for (int i = 0; i < spcoc_ps.Length; i++)
                     {
                         str += (1 << (spcoc_ps[i] & 0x000F)) + "x" +
                             (1 << (((spcoc_ps[i] & 0x00F0) >> 4))) + " ";
@@ -82,7 +83,7 @@ namespace Jpeg2000Library.CodeStream
             public String toString()
             {
                 String str = "\n --- CRG (" + lcrg + " bytes) ---\n";
-                for (int c = 0; c < xcrg.length; c++)
+                for (int c = 0; c < xcrg.Length; c++)
                 {
                     str += " Component " + c + " offset : " + xcrg[c] + "," + ycrg[c] + "\n";
                 }
@@ -104,19 +105,19 @@ namespace Jpeg2000Library.CodeStream
             public int[] spcod_t = new int[1]; // Transformation
             public int[] spcod_ps; // Precinct size
 
-            public COD getCopy()
-            {
-                COD ms = null;
-                try
-                {
-                    ms = (COD)this.clone();
-                }
-                catch (CloneNotSupportedException e)
-                {
-                    throw new Error("Cannot clone SIZ marker segment");
-                }
-                return ms;
-            }
+            // public COD getCopy()
+            // {
+            //     COD ms = null;
+            //     try
+            //     {
+            //         ms = (COD)this.clone();
+            //     }
+            //     catch (CloneNotSupportedException e)
+            //     {
+            //         throw new Error("Cannot clone SIZ marker segment");
+            //     }
+            //     return ms;
+            // }
             /** Display information found in this COD marker segment */
             public String toString()
             {
@@ -128,11 +129,11 @@ namespace Jpeg2000Library.CodeStream
                 }
                 else
                 {
-                    if ((scod & SCOX_PRECINCT_PARTITION) != 0) str += "Precints ";
-                    if ((scod & SCOX_USE_SOP) != 0) str += "SOP ";
-                    if ((scod & SCOX_USE_EPH) != 0) str += "EPH ";
-                    int cb0x = ((scod & SCOX_HOR_CB_PART) != 0) ? 1 : 0;
-                    int cb0y = ((scod & SCOX_VER_CB_PART) != 0) ? 1 : 0;
+                    if ((scod & Markers.SCOX_PRECINCT_PARTITION) != 0) str += "Precints ";
+                    if ((scod & Markers.SCOX_USE_SOP) != 0) str += "SOP ";
+                    if ((scod & Markers.SCOX_USE_EPH) != 0) str += "EPH ";
+                    int cb0x = ((scod & Markers.SCOX_HOR_CB_PART) != 0) ? 1 : 0;
+                    int cb0y = ((scod & Markers.SCOX_VER_CB_PART) != 0) ? 1 : 0;
                     if (cb0x != 0 || cb0y != 0)
                     {
                         str += "Code-blocks offset";
@@ -158,19 +159,19 @@ namespace Jpeg2000Library.CodeStream
                 str += " Num. of levels : " + spcod_ndl + "\n";
                 switch (sgcod_po)
                 {
-                    case LY_RES_COMP_POS_PROG:
+                    case ProgressionType.LY_RES_COMP_POS_PROG:
                         str += " Progress. type : LY_RES_COMP_POS_PROG\n";
                         break;
-                    case RES_LY_COMP_POS_PROG:
+                    case ProgressionType.RES_LY_COMP_POS_PROG:
                         str += " Progress. type : RES_LY_COMP_POS_PROG\n";
                         break;
-                    case RES_POS_COMP_LY_PROG:
+                    case ProgressionType.RES_POS_COMP_LY_PROG:
                         str += " Progress. type : RES_POS_COMP_LY_PROG\n";
                         break;
-                    case POS_COMP_RES_LY_PROG:
+                    case ProgressionType.POS_COMP_RES_LY_PROG:
                         str += " Progress. type : POS_COMP_RES_LY_PROG\n";
                         break;
-                    case COMP_POS_RES_LY_PROG:
+                    case ProgressionType.COMP_POS_RES_LY_PROG:
                         str += " Progress. type : COMP_POS_RES_LY_PROG\n";
                         break;
                 }
@@ -179,10 +180,10 @@ namespace Jpeg2000Library.CodeStream
                     (1 << (spcod_ch + 2)) + "\n";
                 switch (spcod_t[0])
                 {
-                    case W9X7:
+                    case FilterTypes.W9X7:
                         str += " Filter         : 9-7 irreversible\n";
                         break;
-                    case W5X3:
+                    case FilterTypes.W5X3:
                         str += " Filter         : 5-3 reversible\n";
                         break;
                 }
@@ -190,7 +191,7 @@ namespace Jpeg2000Library.CodeStream
                 if (spcod_ps != null)
                 {
                     str += " Precincts      : ";
-                    for (int i = 0; i < spcod_ps.length; i++)
+                    for (int i = 0; i < spcod_ps.Length; i++)
                     {
                         str += (1 << (spcod_ps[i] & 0x000F)) + "x" +
                             (1 << (((spcod_ps[i] & 0x00F0) >> 4))) + " ";

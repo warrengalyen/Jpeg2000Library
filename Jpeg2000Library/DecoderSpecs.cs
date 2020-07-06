@@ -1,4 +1,8 @@
-﻿public class DecoderSpecs
+﻿using Jpeg2000Library.Entropy;
+using Jpeg2000Library.Image;
+using Jpeg2000Library.Wavelet.Synthesis;
+
+public class DecoderSpecs
 {
 
     /** ICC Profiling specifications */

@@ -43,6 +43,7 @@
 
 
 using System;
+using Jpeg2000Library.Util;
 /**
 * This class extends ModuleSpec and is responsible of Integer specifications
 * for each tile-component.
@@ -117,9 +118,9 @@ public class IntegerSpec : ModuleSpec
         bool[] tileSpec = null; // Tiles concerned by the specification
         bool[] compSpec = null; // Components concerned by the specification
 
-        while (stk.hasMoreTokens())
+        while (stk.HasMoreTokens())
         {
-            word = stk.nextToken();
+            word = stk.NextToken();
 
             switch (word[0])
             {
