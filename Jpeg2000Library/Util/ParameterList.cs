@@ -75,9 +75,9 @@ namespace Jpeg2000Library.Util
          * adding elements one by one, by loading them from a file, or by
          * initializing them from an argument string.
          * */
-        public ParameterList()
+        public ParameterList() : base()
         {
-            super();
+
         }
 
         /**
@@ -88,9 +88,9 @@ namespace Jpeg2000Library.Util
          *
          * @param def The defaults parameters
          * */
-        public ParameterList(ParameterList def)
+        public ParameterList(ParameterList def) : base(def)
         {
-            super(def);
+
         }
 
         /**
@@ -423,26 +423,22 @@ namespace Jpeg2000Library.Util
          * @exception IllegalArgumentException If there's a parameter name
          * starting with 'prfx' which is not in the valid list of parameter names.
          * */
-        public void checkList(char prfx, String plist[])
+        public void checkList(char prfx, String[] plist)
         {
-            Enumeration args;
-            String val;
+
             int i;
-            boolean isvalid;
+            bool isvalid;
 
-            args = propertyNames();
-
-            while (args.hasMoreElements())
+            foreach (var val in PropertyNames)
             {
-                val = (String)args.nextElement();
-                if (val.length() > 0 && val.charAt(0) == prfx)
+                if (val.Length > 0 && val[0] == prfx)
                 {
                     isvalid = false;
                     if (plist != null)
                     {
-                        for (i = plist.length - 1; i >= 0; i--)
+                        for (i = plist.Length - 1; i >= 0; i--)
                         {
-                            if (val.equals(plist[i]))
+                            if (val == (plist[i]))
                             {
                                 isvalid = true;
                                 break;
@@ -451,7 +447,7 @@ namespace Jpeg2000Library.Util
                     }
                     if (!isvalid)
                     { // Did not find valid flag
-                        throw new IllegalArgumentException("Option '" + val + "' is " +
+                        throw new ArgumentException("Option '" + val + "' is " +
                                                            "not a valid one.");
                     }
                 }
@@ -473,27 +469,24 @@ namespace Jpeg2000Library.Util
          * @exception IllegalArgumentException If there's a parameter name not
          * starting with 'prfx' which is not in the valid list of parameter names.
          * */
-        public void checkList(char prfxs[], String plist[])
+        public void checkList(char[] prfxs, String[] plist)
         {
-            Enumeration args;
-            String val, strprfxs;
+            String strprfxs;
             int i;
-            boolean isvalid;
+            bool isvalid;
 
-            args = propertyNames();
             strprfxs = new String(prfxs);
 
-            while (args.hasMoreElements())
+            foreach (var val in PropertyNames)
             {
-                val = (String)args.nextElement();
-                if (val.length() > 0 && strprfxs.indexOf(val.charAt(0)) == -1)
+                if (val.Length > 0 && strprfxs.IndexOf(val[0]) == -1)
                 {
                     isvalid = false;
                     if (plist != null)
                     {
-                        for (i = plist.length - 1; i >= 0; i--)
+                        for (i = plist.Length - 1; i >= 0; i--)
                         {
-                            if (val.equals(plist[i]))
+                            if (val == (plist[i]))
                             {
                                 isvalid = true;
                                 break;
@@ -502,7 +495,7 @@ namespace Jpeg2000Library.Util
                     }
                     if (!isvalid)
                     {
-                        throw new IllegalArgumentException("Option '" + val + "' is " +
+                        throw new ArgumentException("Option '" + val + "' is " +
                                                            "not a valid one.");
                     }
                 }
@@ -522,18 +515,18 @@ namespace Jpeg2000Library.Util
          * @return An array with the names of the options in pinfo. If pinfo is
          * null, null is returned.
          * */
-        public static String[] toNameArray(String pinfo[][])
+        public static String[] toNameArray(String[][] pinfo)
         {
-            String pnames[];
+            String[] pnames;
 
             if (pinfo == null)
             {
                 return null;
             }
 
-            pnames = new String[pinfo.length];
+            pnames = new String[pinfo.Length];
 
-            for (int i = pinfo.length - 1; i >= 0; i--)
+            for (int i = pinfo.Length - 1; i >= 0; i--)
             {
                 pnames[i] = pinfo[i][0];
             }
