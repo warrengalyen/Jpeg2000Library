@@ -418,6 +418,33 @@ namespace Jpeg2000Library.CodeStream
                 return this.MemberwiseClone();
             }
         }
+
+        /** Internal class holding information found in the RGN marker segments */
+        public class RGN
+        {
+            public int lrgn;
+            public int crgn;
+            public int srgn;
+            public int sprgn;
+            /** Display information found in this RGN marker segment */
+            public override string ToString()
+            {
+                String str = "\n --- RGN (" + lrgn + " bytes) ---\n";
+                str += " Component : " + crgn + "\n";
+                if (srgn == 0)
+                {
+                    str += " ROI style : Implicit\n";
+                }
+                else
+                {
+                    str += " ROI style : Unsupported\n";
+                }
+                str += " ROI shift : " + sprgn + "\n";
+                str += "\n";
+                return str;
+            }
+        }
+
         public class POC
         {
             public int lpoc;
@@ -469,5 +496,6 @@ namespace Jpeg2000Library.CodeStream
         public NullableDictionary<string, COD> cod = new NullableDictionary<string, COD>();
         public NullableDictionary<string, COC> coc = new NullableDictionary<string, COC>();
         public NullableDictionary<string, POC> poc = new NullableDictionary<string, POC>();
+        public NullableDictionary<string, RGN> rgn = new NullableDictionary<string, RGN>();
     }
 }

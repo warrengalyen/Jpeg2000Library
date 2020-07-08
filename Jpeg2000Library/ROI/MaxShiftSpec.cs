@@ -1,4 +1,4 @@
-﻿namespace jpeg2000_decoder.ROI
+﻿namespace Jpeg2000Library.ROI
 {
     public class MaxShiftSpec : ModuleSpec
     {
