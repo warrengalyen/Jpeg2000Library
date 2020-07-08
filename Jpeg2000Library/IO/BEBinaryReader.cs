@@ -82,5 +82,10 @@ namespace Jpeg2000Library.IO
 
             return n - remaining;
         }
+
+        public int Read(byte[] buffer, int index, int count)
+        {
+            return _reader.Read(buffer, index, count);
+        }
     }
 }
