@@ -40,6 +40,9 @@
  * 
  * Copyright (c) 1999/2000 JJ2000 Partners.
  * */
+using Jpeg2000Library.Util;
+using System;
+
 namespace Jpeg2000Library.Quantization
 {
 
@@ -53,189 +56,189 @@ namespace Jpeg2000Library.Quantization
     public class QuantStepSizeSpec : ModuleSpec
     {
 
-    /** 
-     * Constructs an empty 'QuantStepSizeSpec' with specified number of
-     * tile and components. This constructor is called by the decoder.
-     *
-     * @param nt Number of tiles
-     *
-     * @param nc Number of components
-     *
-     * @param type the type of the specification module i.e. tile specific,
-     * component specific or both.
-     * */
-    public QuantStepSizeSpec(int nt, int nc, byte type)
-    {
-        super(nt, nc, type);
-    }
-
-    /**
-     * Constructs a new 'QuantStepSizeSpec' for the specified number of
-     * components and tiles and the arguments of "-Qstep" option.
-     *
-     * @param nt The number of tiles
-     *
-     * @param nc The number of components
-     *
-     * @param type the type of the specification module i.e. tile specific,
-     * component specific or both.
-     *
-     * @param pl The ParameterList
-     * */
-    public QuantStepSizeSpec(int nt, int nc, byte type, ParameterList pl)
-    {
-        super(nt, nc, type);
-
-        String param = pl.getParameter("Qstep");
-        if (param == null)
+        /** 
+         * Constructs an empty 'QuantStepSizeSpec' with specified number of
+         * tile and components. This constructor is called by the decoder.
+         *
+         * @param nt Number of tiles
+         *
+         * @param nc Number of components
+         *
+         * @param type the type of the specification module i.e. tile specific,
+         * component specific or both.
+         * */
+        public QuantStepSizeSpec(int nt, int nc, byte type) : base(nt, nc, type)
         {
-            throw new IllegalArgumentException("Qstep option not specified");
+
         }
 
-        // Parse argument
-        StringTokenizer stk = new StringTokenizer(param);
-        String word; // current word
-        byte curSpecType = SPEC_DEF; // Specification type of the
-                                     // current parameter
-        boolean[] tileSpec = null; // Tiles concerned by the specification
-        boolean[] compSpec = null; // Components concerned by the specification
-        Float value; // value of the current step size
-
-        while (stk.hasMoreTokens())
+        /**
+         * Constructs a new 'QuantStepSizeSpec' for the specified number of
+         * components and tiles and the arguments of "-Qstep" option.
+         *
+         * @param nt The number of tiles
+         *
+         * @param nc The number of components
+         *
+         * @param type the type of the specification module i.e. tile specific,
+         * component specific or both.
+         *
+         * @param pl The ParameterList
+         * */
+        public QuantStepSizeSpec(int nt, int nc, byte type, ParameterList pl) : base(nt, nc, type)
         {
-            word = stk.nextToken().toLowerCase();
 
-            switch (word.charAt(0))
+
+            String param = pl.getParameter("Qstep");
+            if (param == null)
             {
-                case 't': // Tiles specification
-                    tileSpec = parseIdx(word, nTiles);
-                    if (curSpecType == SPEC_COMP_DEF)
-                        curSpecType = SPEC_TILE_COMP;
-                    else
-                        curSpecType = SPEC_TILE_DEF;
-                    break;
-                case 'c': // Components specification
-                    compSpec = parseIdx(word, nComp);
-                    if (curSpecType == SPEC_TILE_DEF)
-                        curSpecType = SPEC_TILE_COMP;
-                    else
-                        curSpecType = SPEC_COMP_DEF;
-                    break;
-                default: // Step size value
-                    try
-                    {
-                        value = new Float(word);
-                    }
-                    catch (NumberFormatException e)
-                    {
-                        throw new IllegalArgumentException("Bad parameter for " +
-                                           "-Qstep option : " +
-                                           word);
-                    }
+                throw new ArgumentException("Qstep option not specified");
+            }
 
-                    if (value.floatValue() <= 0.0f)
-                    {
-                        throw new IllegalArgumentException("Normalized base step " +
-                                           "must be positive : " +
-                                           value);
-                    }
+            // Parse argument
+            StringTokenizer stk = new StringTokenizer(param);
+            String word; // current word
+            byte curSpecType = SPEC_DEF; // Specification type of the
+                                         // current parameter
+            bool[] tileSpec = null; // Tiles concerned by the specification
+            bool[] compSpec = null; // Components concerned by the specification
+            float value; // value of the current step size
 
+            while (stk.HasMoreTokens())
+            {
+                word = stk.NextToken().ToLower();
 
-                    if (curSpecType == SPEC_DEF)
-                    {
-                        setDefault(value);
-                    }
-                    else if (curSpecType == SPEC_TILE_DEF)
-                    {
-                        for (int i = tileSpec.length - 1; i >= 0; i--)
-                            if (tileSpec[i])
-                            {
-                                setTileDef(i, value);
-                            }
-                    }
-                    else if (curSpecType == SPEC_COMP_DEF)
-                    {
-                        for (int i = compSpec.length - 1; i >= 0; i--)
-                            if (compSpec[i])
-                            {
-                                setCompDef(i, value);
-                            }
-                    }
-                    else
-                    {
-                        for (int i = tileSpec.length - 1; i >= 0; i--)
+                switch (word[0])
+                {
+                    case 't': // Tiles specification
+                        tileSpec = parseIdx(word, nTiles);
+                        if (curSpecType == SPEC_COMP_DEF)
+                            curSpecType = SPEC_TILE_COMP;
+                        else
+                            curSpecType = SPEC_TILE_DEF;
+                        break;
+                    case 'c': // Components specification
+                        compSpec = parseIdx(word, nComp);
+                        if (curSpecType == SPEC_TILE_DEF)
+                            curSpecType = SPEC_TILE_COMP;
+                        else
+                            curSpecType = SPEC_COMP_DEF;
+                        break;
+                    default: // Step size value
+                        try
                         {
-                            for (int j = compSpec.length - 1; j >= 0; j--)
-                            {
-                                if (tileSpec[i] && compSpec[j])
+                            value = float.Parse(word);
+                        }
+                        catch (FormatException e)
+                        {
+                            throw new ArgumentException("Bad parameter for " +
+                                               "-Qstep option : " +
+                                               word);
+                        }
+
+                        if (value <= 0.0f)
+                        {
+                            throw new ArgumentException("Normalized base step " +
+                                               "must be positive : " +
+                                               value);
+                        }
+
+
+                        if (curSpecType == SPEC_DEF)
+                        {
+                            setDefault(value);
+                        }
+                        else if (curSpecType == SPEC_TILE_DEF)
+                        {
+                            for (int i = tileSpec.Length - 1; i >= 0; i--)
+                                if (tileSpec[i])
                                 {
-                                    setTileCompVal(i, j, value);
+                                    setTileDef(i, value);
+                                }
+                        }
+                        else if (curSpecType == SPEC_COMP_DEF)
+                        {
+                            for (int i = compSpec.Length - 1; i >= 0; i--)
+                                if (compSpec[i])
+                                {
+                                    setCompDef(i, value);
+                                }
+                        }
+                        else
+                        {
+                            for (int i = tileSpec.Length - 1; i >= 0; i--)
+                            {
+                                for (int j = compSpec.Length - 1; j >= 0; j--)
+                                {
+                                    if (tileSpec[i] && compSpec[j])
+                                    {
+                                        setTileCompVal(i, j, value);
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    // Re-initialize
-                    curSpecType = SPEC_DEF;
-                    tileSpec = null;
-                    compSpec = null;
-                    break;
+                        // Re-initialize
+                        curSpecType = SPEC_DEF;
+                        tileSpec = null;
+                        compSpec = null;
+                        break;
+                }
             }
-        }
 
-        // Check that default value has been specified
-        if (getDefault() == null)
-        {
-            int ndefspec = 0;
-            for (int t = nt - 1; t >= 0; t--)
+            // Check that default value has been specified
+            if (getDefault() == null)
             {
-                for (int c = nc - 1; c >= 0; c--)
+                int ndefspec = 0;
+                for (int t = nt - 1; t >= 0; t--)
                 {
-                    if (specValType[t][c] == SPEC_DEF)
+                    for (int c = nc - 1; c >= 0; c--)
                     {
-                        ndefspec++;
+                        if (specValType[t][c] == SPEC_DEF)
+                        {
+                            ndefspec++;
+                        }
+                    }
+                }
+
+                // If some tile-component have received no specification, it takes
+                // the default value defined in ParameterList
+                if (ndefspec != 0)
+                {
+                    setDefault(float.Parse(pl.getDefaultParameterList().
+                                         getParameter("Qstep")));
+                }
+                else
+                {
+                    // All tile-component have been specified, takes the first
+                    // tile-component value as default.
+                    setDefault(getTileCompVal(0, 0));
+                    switch (specValType[0][0])
+                    {
+                        case SPEC_TILE_DEF:
+                            for (int c = nc - 1; c >= 0; c--)
+                            {
+                                if (specValType[0][c] == SPEC_TILE_DEF)
+                                    specValType[0][c] = SPEC_DEF;
+                            }
+                            tileDef[0] = null;
+                            break;
+                        case SPEC_COMP_DEF:
+                            for (int t = nt - 1; t >= 0; t--)
+                            {
+                                if (specValType[t][0] == SPEC_COMP_DEF)
+                                    specValType[t][0] = SPEC_DEF;
+                            }
+                            compDef[0] = null;
+                            break;
+                        case SPEC_TILE_COMP:
+                            specValType[0][0] = SPEC_DEF;
+                            tileCompVal.Add("t0c0", null);
+                            break;
                     }
                 }
             }
-
-            // If some tile-component have received no specification, it takes
-            // the default value defined in ParameterList
-            if (ndefspec != 0)
-            {
-                setDefault(new Float(pl.getDefaultParameterList().
-                                     getParameter("Qstep")));
-            }
-            else
-            {
-                // All tile-component have been specified, takes the first
-                // tile-component value as default.
-                setDefault(getTileCompVal(0, 0));
-                switch (specValType[0][0])
-                {
-                    case SPEC_TILE_DEF:
-                        for (int c = nc - 1; c >= 0; c--)
-                        {
-                            if (specValType[0][c] == SPEC_TILE_DEF)
-                                specValType[0][c] = SPEC_DEF;
-                        }
-                        tileDef[0] = null;
-                        break;
-                    case SPEC_COMP_DEF:
-                        for (int t = nt - 1; t >= 0; t--)
-                        {
-                            if (specValType[t][0] == SPEC_COMP_DEF)
-                                specValType[t][0] = SPEC_DEF;
-                        }
-                        compDef[0] = null;
-                        break;
-                    case SPEC_TILE_COMP:
-                        specValType[0][0] = SPEC_DEF;
-                        tileCompVal.put("t0c0", null);
-                        break;
-                }
-            }
         }
-    }
 
-}
+    }
 }

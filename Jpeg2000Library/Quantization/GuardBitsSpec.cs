@@ -42,9 +42,9 @@
  * 
  */
 using System;
-using jpeg2000_decoder.Util;
+using Jpeg2000Library.Util;
 
-namespace jpeg2000_decoder.Quantization
+namespace Jpeg2000Library.Quantization
 {
     /**
      * This class extends ModuleSpec class in order to hold specifications about

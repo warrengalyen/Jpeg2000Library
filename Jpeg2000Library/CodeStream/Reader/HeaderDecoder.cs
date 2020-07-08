@@ -5,6 +5,7 @@ using System.IO;
 using Jpeg2000Library.Entropy;
 using Jpeg2000Library.Exceptions;
 using Jpeg2000Library.IO;
+using Jpeg2000Library.Quantization.Dequantizer;
 using Jpeg2000Library.ROI;
 using Jpeg2000Library.Util;
 using Jpeg2000Library.Wavelet;
@@ -107,6 +108,37 @@ namespace Jpeg2000Library.CodeStream.Reader
             ReadFoundMainMarkSeg();
         }
 
+        /**
+         * Returns the original bitdepth of the specified component.
+         *
+         * @param c The index of the component
+         *
+         * @return The bitdepth of the component
+         * */
+        public int getOriginalBitDepth(int c)
+        {
+            return _headerInfo.siz.getOrigBitDepth(c);
+        }
+
+        /**
+         * Returns the number of components in the image.
+         *
+         * @return The number of components in the image.
+         * */
+        public int getNumComps()
+        {
+            return _nComp;
+        }
+
+        /** 
+         * Return the DecoderSpecs instance filled when reading the headers
+         * 
+         * @return The DecoderSpecs of the decoder
+         * */
+        public DecoderSpecs getDecoderSpecs()
+        {
+            return _decSpec;
+        }
         private void ExtractMainMarkSeg(ushort marker)
         {
             if (_nfMarkSeg == 0)
@@ -303,22 +335,22 @@ namespace Jpeg2000Library.CodeStream.Reader
                 }
             }
 
-            // // QCD marker segment
-            // if ((_nfMarkSeg & QCD_FOUND) != 0)
-            // {
-            //     bais = new MemoryStream(_dictionary["QCD"]);
-            //     ReadQCD(new BEBinaryReader(bais), true, 0, 0);
-            // }
+            // QCD marker segment
+            if ((_nfMarkSeg & QCD_FOUND) != 0)
+            {
+                bais = new MemoryStream(_dictionary["QCD"]);
+                ReadQCD(new BEBinaryReader(bais), true, 0, 0);
+            }
 
-            // // QCC marker segments
-            // if ((_nfMarkSeg & QCC_FOUND) != 0)
-            // {
-            //     for (int i = 0; i < _nQCCMarkSeg; i++)
-            //     {
-            //         bais = new MemoryStream(_dictionary["QCC" + i]);
-            //         ReadQCC(new BEBinaryReader(bais), true, 0, 0);
-            //     }
-            // }
+            // QCC marker segments
+            if ((_nfMarkSeg & QCC_FOUND) != 0)
+            {
+                for (int i = 0; i < _nQCCMarkSeg; i++)
+                {
+                    bais = new MemoryStream(_dictionary["QCC" + i]);
+                    ReadQCC(new BEBinaryReader(bais), true, 0, 0);
+                }
+            }
 
             // POC marker segment
             if ((_nfMarkSeg & POC_FOUND) != 0)
@@ -419,7 +451,7 @@ namespace Jpeg2000Library.CodeStream.Reader
         private void ReadCOM(BEBinaryReader ehs, bool mainh, int tileIdx,
                           int comIdx)
         {
-            HeaderInfo.COM ms = new HeaderInfo.COM();
+            HeaderInfo.COM ms = _headerInfo.getNewCOM();
 
             // Read length of COM field
             ms.lcom = ehs.ReadUnsignedShort();
@@ -1224,6 +1256,439 @@ namespace Jpeg2000Library.CodeStream.Reader
 
             // Check marker length
             CheckMarkerLength(ehs, "RGN marker");
+        }
+
+        /**
+         * Reads a QCD marker segment and realigns the codestream at the point
+         * where the next marker should be found. QCD is a functional marker
+         * segment that describes the quantization default.
+         * 
+         * @param ehs The encoded stream.
+         *
+         * @param mainh Flag indicating whether or not this marker segment is read
+         * from the main header.
+         *
+         * @param tileIdx The index of the current tile
+         *
+         * @param tpIdx Tile-part index
+         *
+         * @exception IOException If an I/O error occurs while reading from the
+         * encoded header stream.
+         * */
+        private void ReadQCD(BEBinaryReader ehs, bool mainh, int tileIdx, int tpIdx)
+        {
+            StdDequantizerParams qParms;
+            int guardBits;
+            int[][] exp;
+            float[][] nStep = null;
+            HeaderInfo.QCD ms = new HeaderInfo.QCD();
+
+            // Lqcd (length of QCD field)
+            ms.lqcd = ehs.ReadUnsignedShort();
+
+            // Sqcd (quantization style)
+            ms.sqcd = ehs.ReadUnsignedByte();
+
+            guardBits = ms.getNumGuardBits();
+            int qType = ms.getQuantType();
+
+            if (mainh)
+            {
+                _headerInfo.qcd.Add("main", ms);
+                // If the main header is being read set default value of
+                // dequantization spec
+                switch (qType)
+                {
+                    case Markers.SQCX_NO_QUANTIZATION:
+                        _decSpec.qts.setDefault("reversible");
+                        break;
+                    case Markers.SQCX_SCALAR_DERIVED:
+                        _decSpec.qts.setDefault("derived");
+                        break;
+                    case Markers.SQCX_SCALAR_EXPOUNDED:
+                        _decSpec.qts.setDefault("expounded");
+                        break;
+                    default:
+                        throw new CorruptedCodestreamException("Unknown or " +
+                                                               "unsupported " +
+                                                               "quantization style " +
+                                                               "in Sqcd field, QCD " +
+                                                               "marker main header");
+                }
+            }
+            else
+            {
+                _headerInfo.qcd.Add("t" + tileIdx, ms);
+                // If the tile header is being read set default value of
+                // dequantization spec for tile
+                switch (qType)
+                {
+                    case Markers.SQCX_NO_QUANTIZATION:
+                        _decSpec.qts.setTileDef(tileIdx, "reversible");
+                        break;
+                    case Markers.SQCX_SCALAR_DERIVED:
+                        _decSpec.qts.setTileDef(tileIdx, "derived");
+                        break;
+                    case Markers.SQCX_SCALAR_EXPOUNDED:
+                        _decSpec.qts.setTileDef(tileIdx, "expounded");
+                        break;
+                    default:
+                        throw new CorruptedCodestreamException("Unknown or " +
+                                                               "unsupported " +
+                                                               "quantization style " +
+                                                               "in Sqcd field, QCD " +
+                                                               "marker, tile header");
+                }
+            }
+
+            qParms = new StdDequantizerParams();
+
+            if (qType == Markers.SQCX_NO_QUANTIZATION)
+            {
+                int maxrl =
+                        (mainh ?
+                          ((int)_decSpec.dls.getDefault()) :
+                          ((int)_decSpec.dls.getTileDef(tileIdx)));
+                int i, j, rl;
+                int minb, maxb, hpd;
+                int tmp;
+
+                exp = qParms.exp = new int[maxrl + 1][];
+                ms.spqcd = new int[maxrl + 1][];
+                for (int idx = 0; idx < ms.spqcd.Length; idx++) ms.spqcd[idx] = new int[4];
+
+                for (rl = 0; rl <= maxrl; rl++)
+                { // Loop on resolution levels
+                  // Find the number of subbands in the resolution level
+                    if (rl == 0)
+                    { // Only the LL subband
+                        minb = 0;
+                        maxb = 1;
+                    }
+                    else
+                    {
+                        // Dyadic decomposition
+                        hpd = 1;
+
+                        // Adapt hpd to resolution level
+                        if (hpd > maxrl - rl)
+                        {
+                            hpd -= maxrl - rl;
+                        }
+                        else
+                        {
+                            hpd = 1;
+                        }
+                        // Determine max and min subband index
+                        minb = 1 << ((hpd - 1) << 1); // minb = 4^(hpd-1)
+                        maxb = 1 << (hpd << 1); // maxb = 4^hpd
+                    }
+                    // Allocate array for subbands in resolution level
+                    exp[rl] = new int[maxb];
+
+                    for (j = minb; j < maxb; j++)
+                    {
+                        tmp = ms.spqcd[rl][j] = ehs.ReadUnsignedByte();
+                        exp[rl][j] = (tmp >> Markers.SQCX_EXP_SHIFT) & Markers.SQCX_EXP_MASK;
+                    }
+                }// end for rl
+            }
+            else
+            {
+                int maxrl = (qType == Markers.SQCX_SCALAR_DERIVED) ? 0 :
+                        (mainh ?
+                         ((int)_decSpec.dls.getDefault()) :
+                         ((int)_decSpec.dls.getTileDef(tileIdx)));
+                int i, j, rl;
+                int minb, maxb, hpd;
+                int tmp;
+
+                exp = qParms.exp = new int[maxrl + 1][];
+                nStep = qParms.nStep = new float[maxrl + 1][];
+                ms.spqcd = new int[maxrl + 1][];
+                for (int idx = 0; idx < ms.spqcd.Length; idx++) ms.spqcd[idx] = new int[4];
+
+                for (rl = 0; rl <= maxrl; rl++)
+                { // Loop on resolution levels
+                  // Find the number of subbands in the resolution level
+                    if (rl == 0)
+                    { // Only the LL subband
+                        minb = 0;
+                        maxb = 1;
+                    }
+                    else
+                    {
+                        // Dyadic decomposition
+                        hpd = 1;
+
+                        // Adapt hpd to resolution level
+                        if (hpd > maxrl - rl)
+                        {
+                            hpd -= maxrl - rl;
+                        }
+                        else
+                        {
+                            hpd = 1;
+                        }
+                        // Determine max and min subband index
+                        minb = 1 << ((hpd - 1) << 1); // minb = 4^(hpd-1)
+                        maxb = 1 << (hpd << 1); // maxb = 4^hpd
+                    }
+                    // Allocate array for subbands in resolution level
+                    exp[rl] = new int[maxb];
+                    nStep[rl] = new float[maxb];
+
+                    for (j = minb; j < maxb; j++)
+                    {
+                        tmp = ms.spqcd[rl][j] = ehs.ReadUnsignedShort();
+                        exp[rl][j] = (tmp >> 11) & 0x1f;
+                        // NOTE: the formula below does not support more than 5
+                        // bits for the exponent, otherwise (-1<<exp) might
+                        // overflow (the - is used to be able to represent 2**31)
+                        nStep[rl][j] =
+                        (-1f - ((float)(tmp & 0x07ff)) / (1 << 11)) /
+                        (-1 << exp[rl][j]);
+                    }
+                }// end for rl
+            } // end if (qType != SQCX_NO_QUANTIZATION)
+
+            // Fill qsss, gbs
+            if (mainh)
+            {
+                _decSpec.qsss.setDefault(qParms);
+                _decSpec.gbs.setDefault(guardBits);
+            }
+            else
+            {
+                _decSpec.qsss.setTileDef(tileIdx, qParms);
+                _decSpec.gbs.setTileDef(tileIdx, guardBits);
+            }
+
+            // Check marker length
+            CheckMarkerLength(ehs, "QCD marker");
+        }
+
+        /**
+         * Reads a QCC marker segment and realigns the codestream at the point
+         * where the next marker should be found. QCC is a functional marker
+         * segment that describes the quantization of one component.
+         * 
+         * @param ehs The encoded stream.
+         *
+         * @param mainh Flag indicating whether or not this marker segment is read
+         * from the main header.
+         *
+         * @param tileIdx The index of the current tile
+         *
+         * @param tpIdx Tile-part index
+         *
+         * @exception IOException If an I/O error occurs while reading from the
+         * encoded header stream.
+         * */
+        private void ReadQCC(BEBinaryReader ehs, bool mainh, int tileIdx, int tpIdx)
+        {
+            int cComp;          // current component
+            int tmp;
+            StdDequantizerParams qParms;
+            int[][] expC;
+            float[][] nStepC = null;
+            HeaderInfo.QCC ms = new HeaderInfo.QCC();
+
+            // Lqcc (length of QCC field)
+            ms.lqcc = ehs.ReadUnsignedShort();
+
+            // Cqcc
+            if (_nComp < 257)
+            {
+                cComp = ms.cqcc = ehs.ReadUnsignedByte();
+            }
+            else
+            {
+                cComp = ms.cqcc = ehs.ReadUnsignedShort();
+            }
+            if (cComp >= _nComp)
+            {
+                throw new CorruptedCodestreamException("Invalid component " +
+                                                       "index in QCC marker");
+            }
+
+            // Sqcc (quantization style)
+            ms.sqcc = ehs.ReadUnsignedByte();
+            int guardBits = ms.getNumGuardBits();
+            int qType = ms.getQuantType();
+
+            if (mainh)
+            {
+                _headerInfo.qcc.Add("main_c" + cComp, ms);
+                // If main header is being read, set default for component in all
+                // tiles
+                switch (qType)
+                {
+                    case Markers.SQCX_NO_QUANTIZATION:
+                        _decSpec.qts.setCompDef(cComp, "reversible");
+                        break;
+                    case Markers.SQCX_SCALAR_DERIVED:
+                        _decSpec.qts.setCompDef(cComp, "derived");
+                        break;
+                    case Markers.SQCX_SCALAR_EXPOUNDED:
+                        _decSpec.qts.setCompDef(cComp, "expounded");
+                        break;
+                    default:
+                        throw new CorruptedCodestreamException("Unknown or " +
+                                                               "unsupported " +
+                                                               "quantization style " +
+                                                               "in Sqcd field, QCD " +
+                                                               "marker, main header");
+                }
+            }
+            else
+            {
+                _headerInfo.qcc.Add("t" + tileIdx + "_c" + cComp, ms);
+                // If tile header is being read, set value for component in
+                // this tiles
+                switch (qType)
+                {
+                    case Markers.SQCX_NO_QUANTIZATION:
+                        _decSpec.qts.setTileCompVal(tileIdx, cComp, "reversible");
+                        break;
+                    case Markers.SQCX_SCALAR_DERIVED:
+                        _decSpec.qts.setTileCompVal(tileIdx, cComp, "derived");
+                        break;
+                    case Markers.SQCX_SCALAR_EXPOUNDED:
+                        _decSpec.qts.setTileCompVal(tileIdx, cComp, "expounded");
+                        break;
+                    default:
+                        throw new CorruptedCodestreamException("Unknown or " +
+                                                               "unsupported " +
+                                                               "quantization style " +
+                                                               "in Sqcd field, QCD " +
+                                                               "marker, main header");
+                }
+            }
+
+            // Decode all dequantizer params
+            qParms = new StdDequantizerParams();
+
+            if (qType == Markers.SQCX_NO_QUANTIZATION)
+            {
+                int maxrl = (mainh ?
+                                  ((int)_decSpec.dls.getCompDef(cComp)) :
+                                  ((int)_decSpec.dls.getTileCompVal(tileIdx, cComp)));
+                int i, j, rl;
+                int minb, maxb, hpd;
+
+                expC = qParms.exp = new int[maxrl + 1][];
+                ms.spqcc = new int[maxrl + 1][];
+                for (int idx = 0; idx < ms.spqcc.Length; idx++) ms.spqcc[idx] = new int[4];
+
+                for (rl = 0; rl <= maxrl; rl++)
+                { // Loop on resolution levels
+                  // Find the number of subbands in the resolution level
+                    if (rl == 0)
+                    { // Only the LL subband
+                        minb = 0;
+                        maxb = 1;
+                    }
+                    else
+                    {
+                        // Dyadic decomposition
+                        hpd = 1;
+
+                        // Adapt hpd to resolution level
+                        if (hpd > maxrl - rl)
+                        {
+                            hpd -= maxrl - rl;
+                        }
+                        else
+                        {
+                            hpd = 1;
+                        }
+                        // Determine max and min subband index
+                        minb = 1 << ((hpd - 1) << 1); // minb = 4^(hpd-1)
+                        maxb = 1 << (hpd << 1); // maxb = 4^hpd
+                    }
+                    // Allocate array for subbands in resolution level
+                    expC[rl] = new int[maxb];
+
+                    for (j = minb; j < maxb; j++)
+                    {
+                        tmp = ms.spqcc[rl][j] = ehs.ReadUnsignedByte();
+                        expC[rl][j] = (tmp >> Markers.SQCX_EXP_SHIFT) & Markers.SQCX_EXP_MASK;
+                    }
+                }// end for rl
+            }
+            else
+            {
+                int maxrl = (qType == Markers.SQCX_SCALAR_DERIVED) ? 0 :
+                        (mainh ?
+                         ((int)_decSpec.dls.getCompDef(cComp)) :
+                         ((int)_decSpec.dls.getTileCompVal(tileIdx, cComp)));
+                int i, j, rl;
+                int minb, maxb, hpd;
+
+                nStepC = qParms.nStep = new float[maxrl + 1][];
+                expC = qParms.exp = new int[maxrl + 1][];
+                ms.spqcc = new int[maxrl + 1][];
+                for (int idx = 0; idx < ms.spqcc.Length; idx++) ms.spqcc[idx] = new int[4];
+
+                for (rl = 0; rl <= maxrl; rl++)
+                { // Loop on resolution levels
+                  // Find the number of subbands in the resolution level
+                    if (rl == 0)
+                    { // Only the LL subband
+                        minb = 0;
+                        maxb = 1;
+                    }
+                    else
+                    {
+                        // Dyadic decomposition
+                        hpd = 1;
+
+                        // Adapt hpd to resolution level
+                        if (hpd > maxrl - rl)
+                        {
+                            hpd -= maxrl - rl;
+                        }
+                        else
+                        {
+                            hpd = 1;
+                        }
+                        // Determine max and min subband index
+                        minb = 1 << ((hpd - 1) << 1); // minb = 4^(hpd-1)
+                        maxb = 1 << (hpd << 1); // maxb = 4^hpd
+                    }
+                    // Allocate array for subbands in resolution level
+                    expC[rl] = new int[maxb];
+                    nStepC[rl] = new float[maxb];
+
+                    for (j = minb; j < maxb; j++)
+                    {
+                        tmp = ms.spqcc[rl][j] = ehs.ReadUnsignedShort();
+                        expC[rl][j] = (tmp >> 11) & 0x1f;
+                        // NOTE: the formula below does not support more than 5
+                        // bits for the exponent, otherwise (-1<<exp) might
+                        // overflow (the - is used to be able to represent 2**31)
+                        nStepC[rl][j] =
+                            (-1f - ((float)(tmp & 0x07ff)) / (1 << 11)) /
+                            (-1 << expC[rl][j]);
+                    }
+                }// end for rl
+            } // end if (qType != SQCX_NO_QUANTIZATION)
+
+            // Fill qsss, gbs
+            if (mainh)
+            {
+                _decSpec.qsss.setCompDef(cComp, qParms);
+                _decSpec.gbs.setCompDef(cComp, guardBits);
+            }
+            else
+            {
+                _decSpec.qsss.setTileCompVal(tileIdx, cComp, qParms);
+                _decSpec.gbs.setTileCompVal(tileIdx, cComp, guardBits);
+            }
+
+            // Check marker length
+            CheckMarkerLength(ehs, "QCC marker");
         }
 
         private void CheckMarkerLength(BEBinaryReader ehs, String str)

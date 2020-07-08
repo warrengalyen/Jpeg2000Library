@@ -119,7 +119,7 @@ namespace Jpeg2000Library.CodeStream
             //     return ms;
             // }
             /** Display information found in this COD marker segment */
-            public String toString()
+            public override string ToString()
             {
                 String str = "\n --- COD (" + lcod + " bytes) ---\n";
                 str += " Coding style   : ";
@@ -218,7 +218,7 @@ namespace Jpeg2000Library.CodeStream
                 {
                     str += " Registration : General use (IS 8859-15:1999 " +
                         "(Latin) values)\n";
-                    str += " Text         : " + (Convert.ToString(ccom)) + "\n";
+                    str += " Text         : " + (System.Text.Encoding.Default.GetString(ccom)/*Convert.ToString(ccom)*/) + "\n";
                 }
                 else
                 {
@@ -228,6 +228,11 @@ namespace Jpeg2000Library.CodeStream
                 return str;
             }
         }
+        /** Returns a new instance of COM */
+        public COM getNewCOM() { ncom++; return new COM(); }
+
+        /** Returns the number of found COM marker segments */
+        public int getNumCOM() { return ncom; }
 
         /** Internal class holding information found in the SIZ marker segment */
         public class SIZ : ICloneable
@@ -418,7 +423,6 @@ namespace Jpeg2000Library.CodeStream
                 return this.MemberwiseClone();
             }
         }
-
         /** Internal class holding information found in the RGN marker segments */
         public class RGN
         {
@@ -444,7 +448,6 @@ namespace Jpeg2000Library.CodeStream
                 return str;
             }
         }
-
         public class POC
         {
             public int lpoc;
@@ -490,6 +493,184 @@ namespace Jpeg2000Library.CodeStream
                 return str;
             }
         }
+        /** Internal class holding information found in the QCC marker segments */
+        public class QCC
+        {
+            public int lqcc;
+            public int cqcc;
+            public int sqcc;
+            public int[][] spqcc;
+
+            private int qType = -1;
+            public int getQuantType()
+            {
+                if (qType == -1)
+                {
+                    qType = sqcc & ~(Markers.SQCX_GB_MSK << Markers.SQCX_GB_SHIFT);
+                }
+                return qType;
+            }
+            private int gb = -1;
+            public int getNumGuardBits()
+            {
+                if (gb == -1)
+                {
+                    gb = (sqcc >> Markers.SQCX_GB_SHIFT) & Markers.SQCX_GB_MSK;
+                }
+                return gb;
+            }
+
+            /** Display information found in this QCC marker segment */
+            public override string ToString()
+            {
+                String str = "\n --- QCC (" + lqcc + " bytes) ---\n";
+                str += " Component      : " + cqcc + "\n";
+                str += " Quant. type    : ";
+                int qt = getQuantType();
+                if (qt == Markers.SQCX_NO_QUANTIZATION) str += "No quantization \n";
+                else if (qt == Markers.SQCX_SCALAR_DERIVED) str += "Scalar derived\n";
+                else if (qt == Markers.SQCX_SCALAR_EXPOUNDED) str += "Scalar expounded\n";
+                str += " Guard bits     : " + getNumGuardBits() + "\n";
+                if (qt == Markers.SQCX_NO_QUANTIZATION)
+                {
+                    str += " Exponents   :\n";
+                    int exp;
+                    for (int i = 0; i < spqcc.Length; i++)
+                    {
+                        for (int j = 0; j < spqcc[i].Length; j++)
+                        {
+                            if (i == 0 && j == 0)
+                            {
+                                exp = (spqcc[0][0] >> Markers.SQCX_EXP_SHIFT) & Markers.SQCX_EXP_MASK;
+                                str += "\tr=0 : " + exp + "\n";
+                            }
+                            else if (i != 0 && j > 0)
+                            {
+                                exp = (spqcc[i][j] >> Markers.SQCX_EXP_SHIFT) & Markers.SQCX_EXP_MASK;
+                                str += "\tr=" + i + ",s=" + j + " : " + exp + "\n";
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    str += " Exp / Mantissa : \n";
+                    int exp;
+                    double mantissa;
+                    for (int i = 0; i < spqcc.Length; i++)
+                    {
+                        for (int j = 0; j < spqcc[i].Length; j++)
+                        {
+                            if (i == 0 && j == 0)
+                            {
+                                exp = (spqcc[0][0] >> 11) & 0x1f;
+                                mantissa = (-1f - ((float)(spqcc[0][0] & 0x07ff)) /
+                                            (1 << 11)) / (-1 << exp);
+                                str += "\tr=0 : " + exp + " / " + mantissa + "\n";
+                            }
+                            else if (i != 0 && j > 0)
+                            {
+                                exp = (spqcc[i][j] >> 11) & 0x1f;
+                                mantissa = (-1f - ((float)(spqcc[i][j] & 0x07ff)) /
+                                            (1 << 11)) / (-1 << exp);
+                                str += "\tr=" + i + ",s=" + j + " : " + exp + " / " +
+                                    mantissa + "\n";
+                            }
+                        }
+                    }
+                }
+                str += "\n";
+                return str;
+            }
+        }
+        /** Internal class holding information found in the QCD marker segments */
+        public class QCD
+        {
+            public int lqcd;
+            public int sqcd;
+            public int[][] spqcd;
+
+            private int qType = -1;
+            public int getQuantType()
+            {
+                if (qType == -1)
+                {
+                    qType = sqcd & ~(Markers.SQCX_GB_MSK << Markers.SQCX_GB_SHIFT);
+                }
+                return qType;
+            }
+            private int gb = -1;
+            public int getNumGuardBits()
+            {
+                if (gb == -1)
+                {
+                    gb = (sqcd >> Markers.SQCX_GB_SHIFT) & Markers.SQCX_GB_MSK;
+                }
+                return gb;
+            }
+
+            /** Display information found in this QCD marker segment */
+            public override string ToString()
+            {
+                String str = "\n --- QCD (" + lqcd + " bytes) ---\n";
+                str += " Quant. type    : ";
+                int qt = getQuantType();
+                if (qt == Markers.SQCX_NO_QUANTIZATION) str += "No quantization \n";
+                else if (qt == Markers.SQCX_SCALAR_DERIVED) str += "Scalar derived\n";
+                else if (qt == Markers.SQCX_SCALAR_EXPOUNDED) str += "Scalar expounded\n";
+                str += " Guard bits     : " + getNumGuardBits() + "\n";
+                if (qt == Markers.SQCX_NO_QUANTIZATION)
+                {
+                    str += " Exponents   :\n";
+                    int exp;
+                    for (int i = 0; i < spqcd.Length; i++)
+                    {
+                        for (int j = 0; j < spqcd[i].Length; j++)
+                        {
+                            if (i == 0 && j == 0)
+                            {
+                                exp = (spqcd[0][0] >> Markers.SQCX_EXP_SHIFT) & Markers.SQCX_EXP_MASK;
+                                str += "\tr=0 : " + exp + "\n";
+                            }
+                            else if (i != 0 && j > 0)
+                            {
+                                exp = (spqcd[i][j] >> Markers.SQCX_EXP_SHIFT) & Markers.SQCX_EXP_MASK;
+                                str += "\tr=" + i + ",s=" + j + " : " + exp + "\n";
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    str += " Exp / Mantissa : \n";
+                    int exp;
+                    double mantissa;
+                    for (int i = 0; i < spqcd.Length; i++)
+                    {
+                        for (int j = 0; j < spqcd[i].Length; j++)
+                        {
+                            if (i == 0 && j == 0)
+                            {
+                                exp = (spqcd[0][0] >> 11) & 0x1f;
+                                mantissa = (-1f - ((float)(spqcd[0][0] & 0x07ff)) /
+                                            (1 << 11)) / (-1 << exp);
+                                str += "\tr=0 : " + exp + " / " + mantissa + "\n";
+                            }
+                            else if (i != 0 && j > 0)
+                            {
+                                exp = (spqcd[i][j] >> 11) & 0x1f;
+                                mantissa = (-1f - ((float)(spqcd[i][j] & 0x07ff)) /
+                                            (1 << 11)) / (-1 << exp);
+                                str += "\tr=" + i + ",s=" + j + " : " + exp + " / " +
+                                    mantissa + "\n";
+                            }
+                        }
+                    }
+                }
+                str += "\n";
+                return str;
+            }
+        }
         public SIZ siz;
         public CRG crg;
         public NullableDictionary<string, COM> com = new NullableDictionary<string, COM>();
@@ -497,5 +678,71 @@ namespace Jpeg2000Library.CodeStream
         public NullableDictionary<string, COC> coc = new NullableDictionary<string, COC>();
         public NullableDictionary<string, POC> poc = new NullableDictionary<string, POC>();
         public NullableDictionary<string, RGN> rgn = new NullableDictionary<string, RGN>();
+        public NullableDictionary<string, QCC> qcc = new NullableDictionary<string, QCC>();
+        public NullableDictionary<string, QCD> qcd = new NullableDictionary<string, QCD>();
+
+        /** Number of found COM marker segment */
+        private int ncom = 0;
+        /** Display information found in the different marker segments of the main
+     * header */
+        public String toStringMainHeader()
+        {
+            int nc = siz.csiz;
+            // SIZ
+            String str = "" + siz;
+            // COD
+            if (cod["main"] != null)
+            {
+                str += "" + (COD)cod["main"];
+            }
+            // COCs
+            for (int c = 0; c < nc; c++)
+            {
+                if (coc["main_c" + c] != null)
+                {
+                    str += "" + (COC)coc["main_c" + c];
+                }
+            }
+            // QCD
+            if (qcd["main"] != null)
+            {
+                str += "" + (QCD)qcd["main"];
+            }
+            // QCCs
+            for (int c = 0; c < nc; c++)
+            {
+                if (qcc["main_c" + c] != null)
+                {
+                    str += "" + (QCC)qcc["main_c" + c];
+                }
+            }
+            // RGN
+            for (int c = 0; c < nc; c++)
+            {
+                if (rgn["main_c" + c] != null)
+                {
+                    str += "" + (RGN)rgn["main_c" + c];
+                }
+            }
+            // POC
+            if (poc["main"] != null)
+            {
+                str += "" + (POC)poc["main"];
+            }
+            // CRG
+            if (crg != null)
+            {
+                str += "" + crg;
+            }
+            // COM
+            for (int i = 0; i < ncom; i++)
+            {
+                if (com["main_" + i] != null)
+                {
+                    str += "" + (COM)com["main_" + i];
+                }
+            }
+            return str;
+        }
     }
 }

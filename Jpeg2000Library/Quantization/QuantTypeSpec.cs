@@ -41,6 +41,9 @@
  * Copyright (c) 1999/2000 JJ2000 Partners.
  * */
 
+using Jpeg2000Library.Util;
+using System;
+
 namespace Jpeg2000Library.Quantization
 {
 
@@ -62,185 +65,42 @@ namespace Jpeg2000Library.Quantization
     public class QuantTypeSpec : ModuleSpec
     {
 
-    /** 
-     * Constructs an empty 'QuantTypeSpec' with the specified number of tiles
-     * and components. This constructor is called by the decoder.
-     *
-     * @param nt Number of tiles
-     *
-     * @param nc Number of components
-     *
-     * @param type the type of the allowed specifications for this module
-     * i.e. tile specific, component specific or both.
-     * */
-    public QuantTypeSpec(int nt, int nc, byte type)
-    {
-        super(nt, nc, type);
-    }
-
-
-    /**
-     * Constructs a new 'QuantTypeSpec' for the specified number of components
-     * and tiles and the arguments of "-Qtype" option. This constructor is
-     * called by the encoder.
-     *
-     * @param nt The number of tiles
-     *
-     * @param nc The number of components
-     *
-     * @param type the type of the specification module i.e. tile specific,
-     * component specific or both.
-     *
-     * @param pl The ParameterList
-     * */
-    public QuantTypeSpec(int nt, int nc, byte type, ParameterList pl)
-    {
-        super(nt, nc, type);
-
-        String param = pl.getParameter("Qtype");
-        if (param == null)
+        /** 
+         * Constructs an empty 'QuantTypeSpec' with the specified number of tiles
+         * and components. This constructor is called by the decoder.
+         *
+         * @param nt Number of tiles
+         *
+         * @param nc Number of components
+         *
+         * @param type the type of the allowed specifications for this module
+         * i.e. tile specific, component specific or both.
+         * */
+        public QuantTypeSpec(int nt, int nc, byte type) : base(nt, nc, type)
         {
-            if (pl.getBooleanParameter("lossless"))
-            {
-                setDefault("reversible");
-            }
-            else
-            {
-                setDefault("expounded");
-            }
-            return;
+
         }
 
-        // Parse argument
-        StringTokenizer stk = new StringTokenizer(param);
-        String word; // current word
-        byte curSpecValType = SPEC_DEF; // Specification type of the
-                                        // current parameter
-        boolean[] tileSpec = null; // Tiles concerned by the specification
-        boolean[] compSpec = null; // Components concerned by the specification
 
-        while (stk.hasMoreTokens())
+        /**
+         * Constructs a new 'QuantTypeSpec' for the specified number of components
+         * and tiles and the arguments of "-Qtype" option. This constructor is
+         * called by the encoder.
+         *
+         * @param nt The number of tiles
+         *
+         * @param nc The number of components
+         *
+         * @param type the type of the specification module i.e. tile specific,
+         * component specific or both.
+         *
+         * @param pl The ParameterList
+         * */
+        public QuantTypeSpec(int nt, int nc, byte type, ParameterList pl) : base(nt, nc, type)
         {
-            word = stk.nextToken().toLowerCase();
 
-            switch (word.charAt(0))
-            {
-                case 't': // Tiles specification
-                    tileSpec = parseIdx(word, nTiles);
-
-                    if (curSpecValType == SPEC_COMP_DEF)
-                    {
-                        curSpecValType = SPEC_TILE_COMP;
-                    }
-                    else
-                    {
-                        curSpecValType = SPEC_TILE_DEF;
-                    }
-                    break;
-                case 'c': // Components specification
-                    compSpec = parseIdx(word, nComp);
-
-                    if (curSpecValType == SPEC_TILE_DEF)
-                    {
-                        curSpecValType = SPEC_TILE_COMP;
-                    }
-                    else
-                    {
-                        curSpecValType = SPEC_COMP_DEF;
-                    }
-                    break;
-                case 'r': // reversible specification
-                case 'd': // derived quantization step size specification
-                case 'e': // expounded quantization step size specification
-                    if (!word.equalsIgnoreCase("reversible") &&
-                       !word.equalsIgnoreCase("derived") &&
-                       !word.equalsIgnoreCase("expounded"))
-                    {
-                        throw new IllegalArgumentException("Unknown parameter " +
-                                                           "for " +
-                                                           "'-Qtype' option: " +
-                                                           word);
-                    }
-
-                    if (pl.getBooleanParameter("lossless") &&
-                       (word.equalsIgnoreCase("derived") ||
-                         word.equalsIgnoreCase("expounded")))
-                    {
-                        throw new IllegalArgumentException("Cannot use non " +
-                                                           "reversible " +
-                                                           "quantization with " +
-                                                           "'-lossless' option");
-                    }
-
-                    if (curSpecValType == SPEC_DEF)
-                    { // Default specification
-                        setDefault(word);
-                    }
-                    else if (curSpecValType == SPEC_TILE_DEF)
-                    {
-                        // Tile default specification
-                        for (int i = tileSpec.length - 1; i >= 0; i--)
-                        {
-                            if (tileSpec[i])
-                            {
-                                setTileDef(i, word);
-                            }
-                        }
-                    }
-                    else if (curSpecValType == SPEC_COMP_DEF)
-                    {
-                        // Component default specification 
-                        for (int i = compSpec.length - 1; i >= 0; i--)
-                            if (compSpec[i])
-                            {
-                                setCompDef(i, word);
-                            }
-                    }
-                    else
-                    { // Tile-component specification
-                        for (int i = tileSpec.length - 1; i >= 0; i--)
-                        {
-                            for (int j = compSpec.length - 1; j >= 0; j--)
-                            {
-                                if (tileSpec[i] && compSpec[j])
-                                {
-                                    setTileCompVal(i, j, word);
-                                }
-                            }
-                        }
-                    }
-
-                    // Re-initialize
-                    curSpecValType = SPEC_DEF;
-                    tileSpec = null;
-                    compSpec = null;
-                    break;
-
-                default:
-                    throw new IllegalArgumentException("Unknown parameter for " +
-                                                               "'-Qtype' option: " + word);
-            }
-        }
-
-        // Check that default value has been specified
-        if (getDefault() == null)
-        {
-            int ndefspec = 0;
-            for (int t = nt - 1; t >= 0; t--)
-            {
-                for (int c = nc - 1; c >= 0; c--)
-                {
-                    if (specValType[t][c] == SPEC_DEF)
-                    {
-                        ndefspec++;
-                    }
-                }
-            }
-
-            // If some tile-component have received no specification, the
-            // quantization type is 'reversible' (if '-lossless' is specified)
-            // or 'expounded' (if not). 
-            if (ndefspec != 0)
+            String param = pl.getParameter("Qtype");
+            if (param == null)
             {
                 if (pl.getBooleanParameter("lossless"))
                 {
@@ -250,122 +110,264 @@ namespace Jpeg2000Library.Quantization
                 {
                     setDefault("expounded");
                 }
+                return;
             }
-            else
-            {
-                // All tile-component have been specified, takes arbitrarily
-                // the first tile-component value as default and modifies the
-                // specification type of all tile-component sharing this
-                // value.
-                setDefault(getTileCompVal(0, 0));
 
-                switch (specValType[0][0])
+            // Parse argument
+            StringTokenizer stk = new StringTokenizer(param);
+            String word; // current word
+            byte curSpecValType = SPEC_DEF; // Specification type of the
+                                            // current parameter
+            bool[] tileSpec = null; // Tiles concerned by the specification
+            bool[] compSpec = null; // Components concerned by the specification
+
+            while (stk.HasMoreTokens())
+            {
+                word = stk.NextToken().ToLower();
+
+                switch (word[0])
                 {
-                    case SPEC_TILE_DEF:
-                        for (int c = nc - 1; c >= 0; c--)
+                    case 't': // Tiles specification
+                        tileSpec = parseIdx(word, nTiles);
+
+                        if (curSpecValType == SPEC_COMP_DEF)
                         {
-                            if (specValType[0][c] == SPEC_TILE_DEF)
-                                specValType[0][c] = SPEC_DEF;
+                            curSpecValType = SPEC_TILE_COMP;
                         }
-                        tileDef[0] = null;
-                        break;
-                    case SPEC_COMP_DEF:
-                        for (int t = nt - 1; t >= 0; t--)
+                        else
                         {
-                            if (specValType[t][0] == SPEC_COMP_DEF)
-                                specValType[t][0] = SPEC_DEF;
+                            curSpecValType = SPEC_TILE_DEF;
                         }
-                        compDef[0] = null;
                         break;
-                    case SPEC_TILE_COMP:
-                        specValType[0][0] = SPEC_DEF;
-                        tileCompVal.put("t0c0", null);
+                    case 'c': // Components specification
+                        compSpec = parseIdx(word, nComp);
+
+                        if (curSpecValType == SPEC_TILE_DEF)
+                        {
+                            curSpecValType = SPEC_TILE_COMP;
+                        }
+                        else
+                        {
+                            curSpecValType = SPEC_COMP_DEF;
+                        }
                         break;
+                    case 'r': // reversible specification
+                    case 'd': // derived quantization step size specification
+                    case 'e': // expounded quantization step size specification
+                        if (!string.Equals(word, "reversible", StringComparison.InvariantCultureIgnoreCase) &&
+                           !string.Equals(word, "derived", StringComparison.InvariantCultureIgnoreCase) &&
+                           !string.Equals(word, "expounded", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            throw new ArgumentException("Unknown parameter " +
+                                                               "for " +
+                                                               "'-Qtype' option: " +
+                                                               word);
+                        }
+
+                        if (pl.getBooleanParameter("lossless") &&
+                           (string.Equals(word, "derived", StringComparison.InvariantCultureIgnoreCase) ||
+                             string.Equals(word, "expounded", StringComparison.InvariantCultureIgnoreCase)))
+                        {
+                            throw new ArgumentException("Cannot use non " +
+                                                               "reversible " +
+                                                               "quantization with " +
+                                                               "'-lossless' option");
+                        }
+
+                        if (curSpecValType == SPEC_DEF)
+                        { // Default specification
+                            setDefault(word);
+                        }
+                        else if (curSpecValType == SPEC_TILE_DEF)
+                        {
+                            // Tile default specification
+                            for (int i = tileSpec.Length - 1; i >= 0; i--)
+                            {
+                                if (tileSpec[i])
+                                {
+                                    setTileDef(i, word);
+                                }
+                            }
+                        }
+                        else if (curSpecValType == SPEC_COMP_DEF)
+                        {
+                            // Component default specification 
+                            for (int i = compSpec.Length - 1; i >= 0; i--)
+                                if (compSpec[i])
+                                {
+                                    setCompDef(i, word);
+                                }
+                        }
+                        else
+                        { // Tile-component specification
+                            for (int i = tileSpec.Length - 1; i >= 0; i--)
+                            {
+                                for (int j = compSpec.Length - 1; j >= 0; j--)
+                                {
+                                    if (tileSpec[i] && compSpec[j])
+                                    {
+                                        setTileCompVal(i, j, word);
+                                    }
+                                }
+                            }
+                        }
+
+                        // Re-initialize
+                        curSpecValType = SPEC_DEF;
+                        tileSpec = null;
+                        compSpec = null;
+                        break;
+
+                    default:
+                        throw new ArgumentException("Unknown parameter for " +
+                                                                   "'-Qtype' option: " + word);
+                }
+            }
+
+            // Check that default value has been specified
+            if (getDefault() == null)
+            {
+                int ndefspec = 0;
+                for (int t = nt - 1; t >= 0; t--)
+                {
+                    for (int c = nc - 1; c >= 0; c--)
+                    {
+                        if (specValType[t][c] == SPEC_DEF)
+                        {
+                            ndefspec++;
+                        }
+                    }
+                }
+
+                // If some tile-component have received no specification, the
+                // quantization type is 'reversible' (if '-lossless' is specified)
+                // or 'expounded' (if not). 
+                if (ndefspec != 0)
+                {
+                    if (pl.getBooleanParameter("lossless"))
+                    {
+                        setDefault("reversible");
+                    }
+                    else
+                    {
+                        setDefault("expounded");
+                    }
+                }
+                else
+                {
+                    // All tile-component have been specified, takes arbitrarily
+                    // the first tile-component value as default and modifies the
+                    // specification type of all tile-component sharing this
+                    // value.
+                    setDefault(getTileCompVal(0, 0));
+
+                    switch (specValType[0][0])
+                    {
+                        case SPEC_TILE_DEF:
+                            for (int c = nc - 1; c >= 0; c--)
+                            {
+                                if (specValType[0][c] == SPEC_TILE_DEF)
+                                    specValType[0][c] = SPEC_DEF;
+                            }
+                            tileDef[0] = null;
+                            break;
+                        case SPEC_COMP_DEF:
+                            for (int t = nt - 1; t >= 0; t--)
+                            {
+                                if (specValType[t][0] == SPEC_COMP_DEF)
+                                    specValType[t][0] = SPEC_DEF;
+                            }
+                            compDef[0] = null;
+                            break;
+                        case SPEC_TILE_COMP:
+                            specValType[0][0] = SPEC_DEF;
+                            tileCompVal.Add("t0c0", null);
+                            break;
+                    }
                 }
             }
         }
-    }
 
-    /** 
-     * Returns true if given tile-component uses derived quantization step
-     * size.
-     *
-     * @param t Tile index
-     *
-     * @param c Component index
-     *
-     * @return True if derived quantization step size
-     * */
-    public boolean isDerived(int t, int c)
-    {
-        if (((String)getTileCompVal(t, c)).equals("derived"))
+        /** 
+         * Returns true if given tile-component uses derived quantization step
+         * size.
+         *
+         * @param t Tile index
+         *
+         * @param c Component index
+         *
+         * @return True if derived quantization step size
+         * */
+        public bool isDerived(int t, int c)
         {
-            return true;
+            if (((String)getTileCompVal(t, c)) == ("derived"))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
-        else
+
+        /**
+         * Check the reversibility of the given tile-component.
+         *
+         * @param t The index of the tile
+         *
+         * @param c The index of the component
+         *
+         * @return Whether or not the tile-component is reversible
+         * */
+        public bool isReversible(int t, int c)
         {
+            if (((String)getTileCompVal(t, c)) == ("reversible"))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        /**
+         * Check the reversibility of the whole image.
+         *
+         * @return Whether or not the whole image is reversible
+         * */
+        public bool isFullyReversible()
+        {
+            // The whole image is reversible if default specification is
+            // rev and no tile default, component default and
+            // tile-component value has been specificied
+            if (((String)getDefault()) == ("reversible"))
+            {
+                for (int t = nTiles - 1; t >= 0; t--)
+                    for (int c = nComp - 1; c >= 0; c--)
+                        if (specValType[t][c] != SPEC_DEF)
+                            return false;
+                return true;
+            }
+
             return false;
         }
-    }
 
-    /**
-     * Check the reversibility of the given tile-component.
-     *
-     * @param t The index of the tile
-     *
-     * @param c The index of the component
-     *
-     * @return Whether or not the tile-component is reversible
-     * */
-    public boolean isReversible(int t, int c)
-    {
-        if (((String)getTileCompVal(t, c)).equals("reversible"))
+        /**
+         * Check the irreversibility of the whole image.
+         *
+         * @return Whether or not the whole image is reversible
+         * */
+        public bool isFullyNonReversible()
         {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    /**
-     * Check the reversibility of the whole image.
-     *
-     * @return Whether or not the whole image is reversible
-     * */
-    public boolean isFullyReversible()
-    {
-        // The whole image is reversible if default specification is
-        // rev and no tile default, component default and
-        // tile-component value has been specificied
-        if (((String)getDefault()).equals("reversible"))
-        {
+            // The whole image is irreversible no tile-component is reversible
             for (int t = nTiles - 1; t >= 0; t--)
                 for (int c = nComp - 1; c >= 0; c--)
-                    if (specValType[t][c] != SPEC_DEF)
+                    if (((String)getSpec(t, c)) == ("reversible"))
                         return false;
             return true;
         }
 
-        return false;
     }
-
-    /**
-     * Check the irreversibility of the whole image.
-     *
-     * @return Whether or not the whole image is reversible
-     * */
-    public boolean isFullyNonReversible()
-    {
-        // The whole image is irreversible no tile-component is reversible
-        for (int t = nTiles - 1; t >= 0; t--)
-            for (int c = nComp - 1; c >= 0; c--)
-                if (((String)getSpec(t, c)).equals("reversible"))
-                    return false;
-        return true;
-    }
-
-}
 
 }

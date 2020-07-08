@@ -26,6 +26,7 @@ public class Decoder
             input.Seek(fileFormatReader.FirstCodeStreamPosition);
         }
 
+        bool verbose = true;
         // **** Header decoder ****
         // Instantiate header decoder and read main header 
         var headerInfo = new HeaderInfo();
@@ -48,7 +49,75 @@ public class Decoder
             return;
         }
 
+        int nCompCod = headerDecoder.getNumComps();
+        int nTiles = headerInfo.siz.getNumTiles();
+        var decSpec = headerDecoder.getDecoderSpecs();
 
+        // Report information
+        if (verbose)
+        {
+            String info = nCompCod + " component(s) in codestream, " + nTiles +
+        " tile(s)\n";
+            info += "Image dimension: ";
+            for (int c = 0; c < nCompCod; c++)
+            {
+                info += headerInfo.siz.getCompImgWidth(c) + "x" +
+                    headerInfo.siz.getCompImgHeight(c) + " ";
+            }
+
+            if (nTiles != 1)
+            {
+                info += "\nNom. Tile dim. (in canvas): " +
+                    headerInfo.siz.xtsiz + "x" + headerInfo.siz.ytsiz;
+            }
+            Logger.Debug(info);
+        }
+        //if (pl.getBooleanParameter("cdstr_info"))
+        {
+            Logger.Debug("Main header:\n" + headerInfo.toStringMainHeader());
+        }
+
+        // Get demixed bitdepths
+        var depth = new int[nCompCod];
+        for (var i = 0; i < nCompCod; i++) { depth[i] = headerDecoder.getOriginalBitDepth(i); }
+
+        // **** Bit stream reader ****
+        // try
+        // {
+        //     breader = BitstreamReaderAgent.
+        //         createInstance(in, hd, pl, decSpec,
+        //                        pl.getBooleanParameter("cdstr_info"), hi);
+        // }
+        // catch (IOException e)
+        // {
+        //     error("Error while reading bit stream header or parsing " +
+        //   "packets" + ((e.getMessage() != null) ?
+        //      (":\n" + e.getMessage()) : ""), 4);
+        //     if (pl.getParameter("debug").equals("on"))
+        //     {
+        //         e.printStackTrace();
+        //     }
+        //     else
+        //     {
+        //         error("Use '-debug' option for more details", 2);
+        //     }
+        //     return;
+        // }
+        // catch (IllegalArgumentException e)
+        // {
+        //     error("Cannot instantiate bit stream reader" +
+        //               ((e.getMessage() != null) ?
+        //                (":\n" + e.getMessage()) : ""), 2);
+        //     if (pl.getParameter("debug").equals("on"))
+        //     {
+        //         e.printStackTrace();
+        //     }
+        //     else
+        //     {
+        //         error("Use '-debug' option for more details", 2);
+        //     }
+        //     return;
+        // }
         //return null;
     }
 }
